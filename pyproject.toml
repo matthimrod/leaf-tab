@@ -1,13 +1,21 @@
 [project]
-name = "weed-selector"
+name = "leaf-tab"
 version = "1.0.0"
-description = "A little program to download data from my local dispensary and present it in a more useful way."
+description = "LeafTab: The Cannalyzer -- their inventory, your insights -- organized, optimized"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "autopep8>=2.3.2",
-    "jupyter>=1.1.1",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
+    "requests>=2.32.3",
     "xlsxwriter>=3.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "dependency-check>=0.6.0",
+    "mypy>=1.15.0",
+    "pandas-stubs>=2.2.3.250308",
+    "ruff>=0.11.4",
+    "types-requests>=2.32.0.20250328",
 ]
