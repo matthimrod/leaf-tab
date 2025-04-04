@@ -1,0 +1,13 @@
+[project]
+name = "weed-selector"
+version = "1.0.0"
+description = "A little program to download data from my local dispensary and present it in a more useful way."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "autopep8>=2.3.2",
+    "jupyter>=1.1.1",
+    "openpyxl>=3.1.5",
+    "pandas>=2.2.3",
+    "xlsxwriter>=3.2.2",
+]
