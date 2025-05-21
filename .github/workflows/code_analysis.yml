@@ -27,7 +27,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: MyPy Type Analysis
-        run: uv run mypy .\leaf_tab.py
+        run: uv run mypy leaf_tab.py
 
       - name: Ruff Lint and Format Analysis
-        run: uv run ruff check .\leaf_tab.py
+        run: uv run ruff check leaf_tab.py
