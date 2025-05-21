@@ -177,6 +177,8 @@ class EthosDispensary(Dispensary):
                                    for cname in [x['cName'] for x in product_data]]
 
                 for future in concurrent.futures.as_completed(product_futures):
-                    self.inventory.append(future.result())
+                    result = future.result()
+                    if result:
+                        self.inventory.append(result)
 
         self.process_dataframe()
