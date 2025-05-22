@@ -17,7 +17,7 @@ I knew there had to be a better way. First, I wrote a program to retrieve invent
 * Extract cannabinoid and terpene profiles per product.
 * Generate multi-tabbed Excel sheets with conditional formatting.
 
-Usage
+## Usage
 
 LeafTab automates dispensary inventory retrieval by extracting product details and formatting them into a multi-tabbed spreadsheet for easy comparison. To integrate a new dispensary:
 
