@@ -1,7 +1,15 @@
 # LeafTab: The Cannalyzer
 Their inventory, your insights -- organized, optimized.
 
-A Python library for aggregating dispensary inventory, organizing cannabinoid and terpene data, and exporting structured spreadsheets.
+A Python library and sample program for aggregating dispensary inventory, organizing cannabinoid and terpene data, and exporting tabbed spreadsheet.
+
+## Why LeafTab Exists
+
+When I first got my medical cannabis card, I was fortunate to have knowledgeable budtenders who helped me find strains that worked for me. At first, dispensary inventory was fairly stable, making selection easy. But over time, availability became unpredictable, and finding a good alternative was difficult—especially when newer budtenders weren’t as informed. I eventually realized that terpene and cannabinoid ratios are the key to making good product choices.
+
+The challenge? Even within a single dispensary, comparing products based on terpene and cannabinoid ratios was nearly impossible. Browsing inventory meant opening dozens of browser tabs, jotting down scattered notes, and hoping you’d looked at enough options to find a suitable replacement. And that was before even considering shopping around at other dispensaries! I tried maintaining a personal spreadsheet a few times, but copying and pasting everything took hours—only to be outdated almost immediately.
+
+I knew there had to be a better way. First, I wrote a program to retrieve inventory for a single dispensary. Then, I refined it to be modular—so LeafTab could work across multiple dispensaries, making product comparisons simple, efficient, and accurate.
 
 ## Features
 
@@ -9,10 +17,19 @@ A Python library for aggregating dispensary inventory, organizing cannabinoid an
 * Extract cannabinoid and terpene profiles per product.
 * Generate multi-tabbed Excel sheets with conditional formatting.
 
-## Usage
+Usage
 
-* Add an extension of the the `Dispensary` class under the `dispensary/` directory for additional integrations.
-* Add Dispensary class instances to retrieve a multi-tabbed spreadsheet to make trips to the dispensary easier.
+LeafTab automates dispensary inventory retrieval by extracting product details and formatting them into a multi-tabbed spreadsheet for easy comparison. To integrate a new dispensary:
+
+1. Create a new dispensary integration
+   * Add a subclass of `Dispensary` inside the `dispensary/` directory.
+   * In the constructor, retrieve inventory data and populate `self.inventory` with `list[Product]`.
+   * Call `self.process_dataframe()` to convert the inventory into a `DataFrame` for Excel export.
+   * Custom methods may be added if needed to handle data retrieval.
+2. Modify leaf_tab.py to register the new dispensary class
+   * Create an instance of your new Dispensary subclass.
+   * Add it to the list of dispensary objects inside leaf_tab.py.
+   * This list is then passed to the pre-written write_spreadsheet() method, which automatically generates a multi-tabbed spreadsheet, with each dispensary’s inventory appearing in its own sheet.
 
 ### Reverse Engineering Dispensary APIs 
 
