@@ -17,4 +17,4 @@ notebooks/
 .ipynb
 
 # Output files
-.xlsx
+*.xlsx
