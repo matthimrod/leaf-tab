@@ -15,3 +15,6 @@ wheels/
 # Notebook files
 notebooks/
 .ipynb
+
+# Output files
+.xlsx
