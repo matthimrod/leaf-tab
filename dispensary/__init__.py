@@ -3,14 +3,12 @@ import re
 import warnings
 from dataclasses import dataclass
 from typing import NamedTuple
-from typing import Optional
-from urllib.parse import urlencode
-from urllib.parse import urlunparse
+from urllib.parse import urlencode, urlunparse
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
-import pandas
+import pandas as pd
 from pandas import DataFrame
 
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 GREEN = '#63BE7B'
 WHITE = '#FFFFFF'
@@ -26,11 +24,11 @@ class Product:
     strain_type: str                   # Botanical Type: Sativa; Indica; Hybrid
     product_name: str                  # Full product name or concat strain + subtype
     weight: str                        # sub_half; half_gram; gram; two_gram
-    inventory: Optional[int]           # On-hand number, if available
+    inventory: int | None              # On-hand number, if available
     full_price: float
-    sale_price: Optional[float]
-    sale_type: Optional[str]           # Sale calculation type: %-off, $-off
-    sale_description: Optional[str]    # Sale title/description
+    sale_price: float | None
+    sale_type: str | None              # Sale calculation type: %-off, $-off
+    sale_description: str | None       # Sale title/description
     cannabinoids: dict[str, float]     # Dict of cannabinoids (THC, CBD)
     terpenes: dict[str, float]         # Dict of terpenes (Myrcene, Linalool, etc)
     notes: str                         # Notes/product description
@@ -43,23 +41,23 @@ class Dispensary:
     _cannabinoids: set
     _terpenes: set
 
-    def __init__(self):
-        self.name = ""
+    def __init__(self) -> None:
+        self.name = ''
         self.inventory = []
-        self.inventory_data = pandas.DataFrame()
+        self.inventory_data = DataFrame()
         self._cannabinoids = set()
         self._terpenes = set()
 
     @property
-    def cannabinoids(self):
+    def cannabinoids(self) -> list[set]:
         return [x for x in sorted(self._cannabinoids) if x.startswith('THC')] + \
             [x for x in sorted(self._cannabinoids) if not x.startswith('THC')]
 
     @property
-    def terpenes(self):
+    def terpenes(self) -> list[set]:
         return sorted(self._terpenes)
 
-    def process_dataframe(self):
+    def process_dataframe(self) -> None:
         for this in self.inventory:
             row = {
                 'id': [this.id],
@@ -74,7 +72,7 @@ class Dispensary:
                 'full_price': [this.full_price],
                 'sale_price': [this.sale_price],
                 'sale_type': [this.sale_type],
-                'sale_description': [this.sale_description]
+                'sale_description': [this.sale_description],
             }
 
             for name, value in this.cannabinoids.items():
@@ -89,14 +87,14 @@ class Dispensary:
 
             record = DataFrame(row)
             record.dropna(axis=1, how='all')
-            self.inventory_data = pandas.concat([self.inventory_data, record])
+            self.inventory_data = pd.concat([self.inventory_data, record])
 
     class URLBuilder(NamedTuple):
         scheme: str = 'https'
         netloc: str = ''
         path: str = ''
         params: str = ''
-        query_items: dict[str, str | int | dict] = {}
+        query_items: dict[str, str | int | dict] = {}  # noqa: RUF012
         fragment: str = ''
 
         @property
@@ -114,31 +112,27 @@ class Dispensary:
 
     @staticmethod
     def is_cannabinoid(name: str) -> bool:
-        """
-        Identify a cannabinoid (vs. terpene) by "THC" or "CB*"
+        """Identify a cannabinoid (vs. terpene) by "THC" or "CB*"
         """
         if re.match('THC', name):
             return True
-        if re.match('^CB', name):
-            return True
-        return False
+        return bool(re.match('^CB', name))
 
     @staticmethod
-    def excel_column_name(n):
+    def excel_column_name(n: int) -> str:
+        """Convert a zero-based index to an Excel-style column name.
         """
-        Convert a zero-based index to an Excel-style column name.
-        """
-        result = ""
+        result = ''
         while n >= 0:
             result = chr(n % 26 + 65) + result
             n = n // 26 - 1
         return result
 
     @staticmethod
-    def write_spreadsheet(dispensaries: list["Dispensary"], file_name: str) -> None:
+    def write_spreadsheet(dispensaries: list['Dispensary'], file_name: str) -> None:
         logger = logging.getLogger('Dispensary Spreadsheet Writer')
         logger.info('Writing spreadsheet %s', file_name)
-        with pandas.ExcelWriter(file_name, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(file_name, engine='xlsxwriter') as writer:
             workbook = writer.book
             percent_format = workbook.add_format({'num_format': '0.00%'})
             accounting_format = workbook.add_format(
@@ -146,14 +140,14 @@ class Dispensary:
             category_format = {
                 'sativa': workbook.add_format({'font_color': '#FF0000'}),
                 'hybrid': workbook.add_format({'font_color': '#008000'}),
-                'indica': workbook.add_format({'font_color': '#0000FF'})
+                'indica': workbook.add_format({'font_color': '#0000FF'}),
             }
 
             for dispensary in dispensaries:
-                column_order = []
-                for col in dispensary.inventory_data.columns:
-                    if col not in dispensary.terpenes and col not in dispensary.cannabinoids and col != 'notes':
-                        column_order.append(col)
+                column_order = [col for col in dispensary.inventory_data.columns
+                                if col not in dispensary.terpenes and
+                                col not in dispensary.cannabinoids and
+                                col != 'notes']
                 column_order.extend(dispensary.cannabinoids)
                 column_order.extend(dispensary.terpenes)
                 if 'notes' in dispensary.inventory_data.columns:
@@ -172,9 +166,11 @@ class Dispensary:
                 for row in range(2, len(dispensary.inventory_data) + 2):
                     strain = dispensary.inventory_data.iloc[row - 2]['strain']
                     product_name = dispensary.inventory_data.iloc[row - 2]['product_name']
-                    strain_type = str(dispensary.inventory_data.iloc[row - 2]['strain_type']).lower()
+                    strain_type = \
+                        str(dispensary.inventory_data.iloc[row - 2]['strain_type']).lower()
                     if strain_type in category_format:
-                        worksheet.write(f"{column_map['strain']}{row}", strain, category_format[strain_type])
+                        worksheet.write(f"{column_map['strain']}{row}", strain,
+                                        category_format[strain_type])
                         worksheet.write(f"{column_map['product_name']}{row}", product_name,
                                         category_format[strain_type])
 
@@ -183,26 +179,33 @@ class Dispensary:
                             {
                                 'type': '2_color_scale',
                                 'min_color': WHITE,
-                                'max_color': GREEN
-                            }
+                                'max_color': GREEN,
+                            },
                     )
 
-                worksheet.autofilter(0, 0, len(dispensary.inventory_data), len(dispensary.inventory_data.columns))
+                worksheet.autofilter(0, 0,
+                                     len(dispensary.inventory_data),
+                                     len(dispensary.inventory_data.columns))
 
                 # for column in ADJUST_WIDTH_FIELDS:
                 for col in dispensary.inventory_data.columns:
-                    if col not in dispensary.terpenes and col not in dispensary.cannabinoids and col != 'notes':
+                    if col not in dispensary.terpenes and \
+                            col not in dispensary.cannabinoids and \
+                            col != 'notes':
                         max_len = max(
                                 dispensary.inventory_data[col].astype(str).map(len).max(),
                                 # Length of the longest cell in the column
-                                len(col)  # Length of the column name
+                                len(col),  # Length of the column name
                         ) + 3  # Adding some padding
                         worksheet.set_column(f'{column_map[col]}:{column_map[col]}', max_len)
 
                 for col in [x for x in dispensary.inventory_data.columns if 'price' in x]:
-                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}', None, accounting_format)
+                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}',
+                                         None, accounting_format)
 
                 for col in dispensary.cannabinoids:
-                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}', None, percent_format)
+                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}',
+                                         None, percent_format)
                 for col in dispensary.terpenes:
-                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}', None, percent_format)
+                    worksheet.set_column(f'{column_map[col]}:{column_map[col]}',
+                                         None, percent_format)

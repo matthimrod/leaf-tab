@@ -2,15 +2,12 @@ import concurrent.futures
 import json
 import logging
 import re
-from typing import Optional
-from urllib.parse import quote
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
 from requests.adapters import HTTPAdapter
 
-from dispensary import Dispensary
-from dispensary import Product
+from dispensary import Dispensary, Product
 
 MAX_THREADS = 15
 MAX_POOL_SIZE = 30
@@ -36,7 +33,7 @@ class EthosDispensary(Dispensary):
             return 'two_gram'
         return this
 
-    def __init__(self, location_name: str, dispensary_id: str, api_hostname: str):
+    def __init__(self, location_name: str, dispensary_id: str, api_hostname: str) -> None:
         super().__init__()
         self.name = f'Ethos {location_name}'
         logger = logging.getLogger(self.name)
@@ -44,115 +41,119 @@ class EthosDispensary(Dispensary):
         logger.info('Creating Dispensary')
         with requests.Session() as session:
             adapter = HTTPAdapter(pool_connections=MAX_POOL_SIZE, pool_maxsize=MAX_POOL_SIZE)
-            session.mount("https://", adapter)
-            session.mount("http://", adapter)
-            session.headers.update({"Content-Type": "application/json"})
+            session.mount('https://', adapter)
+            session.mount('http://', adapter)
+            session.headers.update({'Content-Type': 'application/json'})
 
             # Get product catalog to get each product cName.
             total_pages = 1
             products_url = self.URLBuilder(
                     netloc=api_hostname,
-                    path="/api-4/graphql",
+                    path='/api-4/graphql',
                     query_items={
-                        "operationName": "FilteredProducts",
-                        "variables": {
-                            "includeEnterpriseSpecials": False,
-                            "includeCannabinoids": False,
-                            "productsFilter": {
-                                "productIds": [],
-                                "dispensaryId": dispensary_id,
-                                "pricingType": "med",
-                                "strainTypes": [],
-                                "subcategories": [],
-                                "Status": "Active",
-                                "types": ["Vaporizers"],
-                                "useCache": False,
-                                "isDefaultSort": True,
-                                "sortBy": "weight",
-                                "sortDirection": 1,
-                                "bypassOnlineThresholds": False,
-                                "isKioskMenu": False,
-                                "removeProductsBelowOptionThresholds": True,
+                        'operationName': 'FilteredProducts',
+                        'variables': {
+                            'includeEnterpriseSpecials': False,
+                            'includeCannabinoids': False,
+                            'productsFilter': {
+                                'productIds': [],
+                                'dispensaryId': dispensary_id,
+                                'pricingType': 'med',
+                                'strainTypes': [],
+                                'subcategories': [],
+                                'Status': 'Active',
+                                'types': ['Vaporizers'],
+                                'useCache': False,
+                                'isDefaultSort': True,
+                                'sortBy': 'weight',
+                                'sortDirection': 1,
+                                'bypassOnlineThresholds': False,
+                                'isKioskMenu': False,
+                                'removeProductsBelowOptionThresholds': True,
                             },
-                            "page": 0,
-                            "perPage": 50,
+                            'page': 0,
+                            'perPage': 50,
                         },
-                        "extensions": {
-                            "persistedQuery": {
-                                "version": 1,
-                                "sha256Hash": "4bfbf7d757b39f1bed921eab15fc7328dab55a30ad47ff8d5cc499f810ff2aee",
-                            }
+                        'extensions': {
+                            'persistedQuery': {
+                                'version': 1,
+                                'sha256Hash': '4bfbf7d757b39f1bed921eab15fc7328dab55a30ad47ff8d5cc499f810ff2aee',
+                            },
                         },
                     },
             )
             product_data = []
-            while products_url.query_items["variables"]["page"] <= total_pages:  # type: ignore
+            while products_url.query_items['variables']['page'] <= total_pages:  # type: ignore[index, operator]
                 logger.info('Reading inventory page %d',
-                            products_url.query_items["variables"]["page"])  # type: ignore
+                            products_url.query_items['variables']['page'])  # type: ignore[index]
                 response = session.get(url=products_url.url)
                 payload = response.json()
 
                 total_pages = payload['data']['filteredProducts']['queryInfo']['totalPages']
-                products_url.query_items["variables"]["page"] += 1  # type: ignore
+                products_url.query_items['variables']['page'] += 1  # type: ignore[index, operator]
 
-                product_data.extend(payload["data"]["filteredProducts"]["products"])
+                product_data.extend(payload['data']['filteredProducts']['products'])
 
             # Get full product details including Cannabinoids and Terpenes
-            def get_product_by_cname(product_cname: str) -> Optional[Product]:
+            def get_product_by_cname(product_cname: str) -> Product | None:
                 logger.info('Reading full information for %s',
                             product_cname)
                 product_url = self.URLBuilder(
                         netloc=api_hostname,
-                        path="/api-4/graphql",
+                        path='/api-4/graphql',
                         query_items={
-                            "operationName": "IndividualFilteredProduct",
-                            "variables": {
-                                "includeTerpenes": True,
-                                "includeEnterpriseSpecials": False,
-                                "includeCannabinoids": True,
-                                "productsFilter": {
-                                    "cName": product_cname,
-                                    "dispensaryId": dispensary_id,
-                                    "removeProductsBelowOptionThresholds": False,
-                                    "isKioskMenu": False,
-                                    "bypassKioskThresholds": False,
-                                    "bypassOnlineThresholds": True,
-                                    "Status": "All",
+                            'operationName': 'IndividualFilteredProduct',
+                            'variables': {
+                                'includeTerpenes': True,
+                                'includeEnterpriseSpecials': False,
+                                'includeCannabinoids': True,
+                                'productsFilter': {
+                                    'cName': product_cname,
+                                    'dispensaryId': dispensary_id,
+                                    'removeProductsBelowOptionThresholds': False,
+                                    'isKioskMenu': False,
+                                    'bypassKioskThresholds': False,
+                                    'bypassOnlineThresholds': True,
+                                    'Status': 'All',
                                 },
                             },
-                            "extensions": {
-                                "persistedQuery": {
-                                    "version": 1,
-                                    "sha256Hash": "48e21bfc45af395e20566dac81472cabb6e0bcf0b0b8cf6ddde10ab6062e3895",
-                                }
+                            'extensions': {
+                                'persistedQuery': {
+                                    'version': 1,
+                                    'sha256Hash':
+                                        '48e21bfc45af395e20566dac81472cabb6e0bcf0b0b8cf6ddde10ab6062e3895',
+                                },
                             },
                         },
                 )
                 response = session.get(url=product_url.url)
                 payload = response.json()
-                if not payload["data"]["filteredProducts"]["products"]:
+                if not payload['data']['filteredProducts']['products']:
                     return None
-                item = payload["data"]["filteredProducts"]["products"][0]
+                item = payload['data']['filteredProducts']['products'][0]
 
                 product = Product(id=item['id'],
                                   brand=item['brandName'],
                                   type=item['type'],
-                                  subtype=item['Name'].split('|')[1].strip(),
-                                  strain=item['Name'].split('|')[0].strip(),
+                                  subtype=item['Name'].split('|')[1].strip()
+                                          if '|' in item['Name'] else item['Name'],
+                                  strain=item['Name'].split('|')[0].strip()
+                                        if '|' in item['Name'] else item['Name'],
                                   strain_type=item['strainType'],
                                   product_name=item['Name'],
-                                  weight=self.weight(item['Options'][0]) if item['Options'] else "",
+                                  weight=self.weight(item['Options'][0]) if item['Options'] else '',
                                   inventory=item['manualInventory'][0]['inventory'],
                                   full_price=item['Prices'][0] if item['Prices'] else 0.0,
                                   sale_price=None,
                                   sale_type=None,
                                   sale_description=None,
                                   cannabinoids={
-                                      x['cannabinoid']['name'].split(' ')[0]: float(x['value']) / 100.0 if x[
-                                          'value'] else 0
+                                      x['cannabinoid']['name'].split(' ')[0]:
+                                          float(x['value']) / 100.0 if x['value'] else 0
                                       for x in item['cannabinoidsV2']
                                       if not x['cannabinoid']['name'].startswith('"TAC"')},
-                                  terpenes={x['libraryTerpene']['name']: float(x['value']) / 100.0 if x['value'] else 0
+                                  terpenes={x['libraryTerpene']['name']:
+                                                float(x['value']) / 100.0 if x['value'] else 0
                                             for x in item['terpenes']},
                                   notes=item['description'])
 
