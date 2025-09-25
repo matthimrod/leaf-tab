@@ -108,8 +108,8 @@ class ZenleafDispensary(Dispensary):
                                    for variant_id in [item['id'] for sublist in
                                                       [x['variants'] for x in product_data]
                                                       for item in sublist]]
-                self.inventory = [future.result()
-                                  for future in concurrent.futures.as_completed(product_futures)]
-                self.inventory = [item for item in self.inventory if item is not None]
+                inventory = [future.result()
+                             for future in concurrent.futures.as_completed(product_futures)]
+                self.inventory = [item for item in inventory if item is not None]
 
         self.process_dataframe()
