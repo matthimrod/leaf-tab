@@ -1,3 +1,4 @@
+"""Rise Dispensary Location class module."""
 import logging
 
 import requests
@@ -6,7 +7,10 @@ from dispensary import Dispensary, Product
 
 
 class RiseDispensary(Dispensary):
+    """Rise Dispensary Location class."""
+
     def __init__(self, location_name: str, store_id: int) -> None:
+        """Construct Rise Dispensary object."""
         super().__init__()
         self.name = f'Rise {location_name}'
         logger = logging.getLogger(self.name)

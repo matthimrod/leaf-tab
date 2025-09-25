@@ -6,7 +6,6 @@ from typing import NamedTuple
 from urllib.parse import urlencode, urlunparse
 
 import pandas as pd
-from pandas import DataFrame
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -16,6 +15,8 @@ WHITE = '#FFFFFF'
 
 @dataclass
 class Product:
+    """Dataclass for Cannabis Product Information."""
+
     id: str                            # Product ID/Primary Key
     brand: str                         # Brand: Double Bear, Organic Remedies, Rythm, etc
     type: str                          # Vape
@@ -35,26 +36,31 @@ class Product:
 
 
 class Dispensary:
+    """Dispensary base class."""
+
     name: str
     inventory: list[Product]
-    inventory_data: DataFrame
+    inventory_data: pd.DataFrame
     _cannabinoids: set
     _terpenes: set
 
     def __init__(self) -> None:
+        """Construct Dispensary base class."""
         self.name = ''
         self.inventory = []
-        self.inventory_data = DataFrame()
+        self.inventory_data = pd.DataFrame()
         self._cannabinoids = set()
         self._terpenes = set()
 
     @property
-    def cannabinoids(self) -> list[set]:
+    def cannabinoids(self) -> list[str]:
+        """Return a sorted list of the cannabinoids (THC/CBD, THC-first)."""
         return [x for x in sorted(self._cannabinoids) if x.startswith('THC')] + \
             [x for x in sorted(self._cannabinoids) if not x.startswith('THC')]
 
     @property
-    def terpenes(self) -> list[set]:
+    def terpenes(self) -> list[str]:
+        """Return a sorted list of the cannabis terpenes."""
         return sorted(self._terpenes)
 
     def process_dataframe(self) -> None:
@@ -85,7 +91,7 @@ class Dispensary:
 
             row['notes'] = [this.notes]
 
-            record = DataFrame(row)
+            record = pd.DataFrame(row)
             record.dropna(axis=1, how='all')
             self.inventory_data = pd.concat([self.inventory_data, record])
 
@@ -99,10 +105,12 @@ class Dispensary:
 
         @property
         def query(self) -> str:
+            """URL query items."""
             return urlencode(self.query_items)
 
         @property
         def url(self) -> str:
+            """The full URL."""
             return urlunparse((self.scheme,
                                self.netloc,
                                self.path,
@@ -112,16 +120,14 @@ class Dispensary:
 
     @staticmethod
     def is_cannabinoid(name: str) -> bool:
-        """Identify a cannabinoid (vs. terpene) by "THC" or "CB*"
-        """
+        """Identify a cannabinoid (vs. terpene) by "THC" or "CB*"."""
         if re.match('THC', name):
             return True
         return bool(re.match('^CB', name))
 
     @staticmethod
     def excel_column_name(n: int) -> str:
-        """Convert a zero-based index to an Excel-style column name.
-        """
+        """Convert a zero-based index to an Excel-style column name."""
         result = ''
         while n >= 0:
             result = chr(n % 26 + 65) + result
@@ -130,6 +136,11 @@ class Dispensary:
 
     @staticmethod
     def write_spreadsheet(dispensaries: list['Dispensary'], file_name: str) -> None:
+        """Write the spreadsheet and all of its tabs to disk.
+
+        :param dispensaries: List of dispensary objects to write.
+        :param file_name: The file name to write.
+        """
         logger = logging.getLogger('Dispensary Spreadsheet Writer')
         logger.info('Writing spreadsheet %s', file_name)
         with pd.ExcelWriter(file_name, engine='xlsxwriter') as writer:

@@ -1,3 +1,5 @@
+"""ZenLeaf Dispensary Location class module."""
+
 import concurrent.futures
 import logging
 import math
@@ -13,6 +15,8 @@ MAX_POOL_SIZE = 30
 
 
 class ZenleafDispensary(Dispensary):
+    """ZenLeaf Dispensary Location class."""
+
     @staticmethod
     def weight(this: str) -> str:
         if re.match(r'\.[1-4]g', this):
@@ -26,6 +30,7 @@ class ZenleafDispensary(Dispensary):
         return this
 
     def __init__(self, location_name: str, store_id: str) -> None:
+        """Construct ZenLeaf Dispensary object."""
         super().__init__()
         self.name = f'Zenleaf {location_name}'
         logger = logging.getLogger(self.name)
@@ -60,7 +65,7 @@ class ZenleafDispensary(Dispensary):
 
                 product_data.extend(payload['list'])
 
-            def get_product_by_id(variant_id: str) -> Product:
+            def get_product_by_id(variant_id: str) -> Product | None:
                 logger.info('Reading full information for %s', variant_id)
                 product_response = session.post(url='https://sweed.app/_api/proxy/Products/GetProductByVariantId',
                                                 json={'variantId': variant_id, 'platformOs': 'web'})
@@ -70,37 +75,41 @@ class ZenleafDispensary(Dispensary):
                                             json={'variantId': variant_id, 'platformOs': 'web'})
                 lab_payload = lab_response.json()
 
-                return Product(id=item['id'],
-                               brand=item['brand']['name'],
-                               type=item['category']['name'],
-                               subtype=item['subcategory']['name'],
-                               strain=item['strain']['name'],
-                               strain_type=item['strain']['prevalence']['name'],
-                               product_name=' - '.join([item['name'], item['variants'][0]['name']]),
-                               weight=self.weight(item['variants'][0]['name']),
-                               inventory=item['variants'][0]['availableQty'],
-                               full_price=item['variants'][0]['price'],
-                               sale_price=item['variants'][0]['promoPrice'],
-                               sale_type=None,
-                               sale_description=' & '.join([promo['name'] for promo
-                                                            in item['variants'][0]['promos']]),
-                               cannabinoids={x['name']: float(x['min'] / 100.0)
-                                             for x in lab_payload['thc']['values']
-                                             if not x['name'].startswith('Total')} |
-                                            {x['name']: float(x['min'] / 100.0)
-                                             for x in lab_payload['cbd']['values']
+                try:
+                    return Product(id=item['id'],
+                                   brand=item['brand']['name'],
+                                   type=item['category']['name'],
+                                   subtype=item['subcategory']['name'],
+                                   strain=item['strain']['name'],
+                                   strain_type=item['strain']['prevalence']['name'],
+                                   product_name=' - '.join([item['name'], item['variants'][0]['name']]),
+                                   weight=self.weight(item['variants'][0]['name']),
+                                   inventory=item['variants'][0]['availableQty'],
+                                   full_price=item['variants'][0]['price'],
+                                   sale_price=item['variants'][0]['promoPrice'],
+                                   sale_type=None,
+                                   sale_description=' & '.join([promo['name'] for promo
+                                                                in item['variants'][0]['promos']]),
+                                   cannabinoids={x['name']: float(x['min'] / 100.0)
+                                                 for x in lab_payload['thc']['values']
+                                                 if not x['name'].startswith('Total')} |
+                                                {x['name']: float(x['min'] / 100.0)
+                                                 for x in lab_payload['cbd']['values']
+                                                 if not x['name'].startswith('Total')},
+                                   terpenes={x['name']: float(x['min'] / 100.0)
+                                             for x in lab_payload['terpenes']['values']
                                              if not x['name'].startswith('Total')},
-                               terpenes={x['name']: float(x['min'] / 100.0)
-                                         for x in lab_payload['terpenes']['values']
-                                         if not x['name'].startswith('Total')},
-                               notes=item['description'])
+                                   notes=item['description'])
+                except TypeError:
+                    return None
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 product_futures = [executor.submit(get_product_by_id, variant_id)
                                    for variant_id in [item['id'] for sublist in
                                                       [x['variants'] for x in product_data]
                                                       for item in sublist]]
-                for future in concurrent.futures.as_completed(product_futures):
-                    self.inventory.append(future.result())
+                self.inventory = [future.result()
+                                  for future in concurrent.futures.as_completed(product_futures)]
+                self.inventory = [item for item in self.inventory if item is not None]
 
         self.process_dataframe()

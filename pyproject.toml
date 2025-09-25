@@ -1,6 +1,6 @@
 [project]
 name = "leaf-tab"
-version = "1.0.0"
+version = "1.1.0"
 description = "LeafTab: The Cannalyzer -- their inventory, your insights -- organized, optimized"
 readme = "README.md"
 requires-python = ">=3.12"
