@@ -6,12 +6,87 @@ import re
 from urllib.parse import quote, urlencode
 
 import requests
+from pydantic import BaseModel
 from requests.adapters import HTTPAdapter
 
 from dispensary import Dispensary, Product
 
 MAX_THREADS = 15
 MAX_POOL_SIZE = 30
+
+
+class EthosProductInventory(BaseModel):
+    option: str
+    inventory: int
+
+
+class EthosProductSaleSpecial(BaseModel):
+    specialName: str
+    percentDiscount: bool
+    targetPrice: bool
+
+
+class EthosProductSpecialData(BaseModel):
+    saleSpecials: list[EthosProductSaleSpecial]
+
+
+class EthosCannabinoid(BaseModel):
+    description: str
+    name: str
+
+
+class EthosProductLabData(BaseModel):
+    unit: str
+    value: float | None
+
+
+class EthosProductTerpene(EthosProductLabData):
+    libraryTerpene: EthosCannabinoid
+
+
+class EthosProductCannabinoid(EthosProductLabData):
+    cannabinoid: EthosCannabinoid
+
+
+class EthosProduct(BaseModel):
+    id: str
+    cName: str
+
+
+class EthosProductDetail(EthosProduct):
+    brandName: str
+    Name: str
+    Options: list[str]
+    manualInventory: list[EthosProductInventory]
+    medicalSpecialPrices: list[float]
+    Prices: list[float]
+    recSpecialPrices: list[float]
+    specialData: EthosProductSpecialData
+    Status: str
+    strainType: str
+    subcategory: str
+    type: str
+    terpenes: list[EthosProductTerpene]
+    cannabinoidsV2: list[EthosProductCannabinoid]
+    description: str
+
+
+class QueryResultInfo(BaseModel):
+    totalCount: int
+    totalPages: int
+
+
+class ProductResultData(BaseModel):
+    products: list[EthosProduct | EthosProductDetail]
+    queryInfo: QueryResultInfo | None = None
+
+
+class ResultData(BaseModel):
+    filteredProducts: ProductResultData
+
+
+class Result(BaseModel):
+    data: ResultData
 
 
 class EthosDispensary(Dispensary):
@@ -94,12 +169,12 @@ class EthosDispensary(Dispensary):
                 logger.info('Reading inventory page %d',
                             products_url.query_items['variables']['page'])  # type: ignore[index]
                 response = session.get(url=products_url.url)
-                payload = response.json()
+                payload = Result.model_validate_json(response.text)
 
-                total_pages = payload['data']['filteredProducts']['queryInfo']['totalPages']
-                products_url.query_items['variables']['page'] += 1  # type: ignore[index, operator]
+                total_pages = payload.data.filteredProducts.queryInfo.totalPages
+                products_url.query_items["variables"]["page"] += 1  # type: ignore[index, operator]
 
-                product_data.extend(payload['data']['filteredProducts']['products'])
+                product_data.extend(payload.data.filteredProducts.products)
 
             # Get full product details including Cannabinoids and Terpenes
             def get_product_by_cname(product_cname: str) -> Product | None:
@@ -135,49 +210,43 @@ class EthosDispensary(Dispensary):
                 )
                 try:
                     response = session.get(url=product_url.url)
-                    payload = response.json()
-                    if not payload['data']['filteredProducts']['products']:
+                    payload = Result.model_validate_json(response.text)
+                    if not payload.data.filteredProducts.products:
                         return None
-                    item = payload['data']['filteredProducts']['products'][0]
+                    item = payload.data.filteredProducts.products[0]
 
-                    product = Product(id=item['id'],
-                                      brand=item['brandName'],
-                                      type=item['type'],
-                                      subtype=item['Name'].split('|')[1].strip()
-                                      if '|' in item['Name'] else item['Name'],
-                                      strain=item['Name'].split('|')[0].strip()
-                                      if '|' in item['Name'] else item['Name'],
-                                      strain_type=item['strainType'],
-                                      product_name=item['Name'],
-                                      weight=self.weight(item['Options'][0]) if item['Options'] else '',
-                                      inventory=item['manualInventory'][0]['inventory'],
-                                      full_price=item['Prices'][0] if item['Prices'] else 0.0,
+                    product = Product(id=item.id,
+                                      brand=item.brandName,
+                                      type=item.type,
+                                      subtype=item.Name.split('|')[1].strip(),
+                                      strain=item.Name.split('|')[0].strip(),
+                                      strain_type=item.strainType,
+                                      product_name=item.Name,
+                                      weight=self.weight(item.Options[0]) if item.Options else "",
+                                      inventory=item.manualInventory[0].inventory,
+                                      full_price=item.Prices[0] if item.Prices else 0.0,
                                       sale_price=None,
                                       sale_type=None,
                                       sale_description=None,
-                                      cannabinoids={
-                                          x['cannabinoid']['name'].split(' ')[0]:
-                                              float(x['value']) / 100.0 if x['value'] else 0
-                                          for x in item['cannabinoidsV2']
-                                          if not x['cannabinoid']['name'].startswith('"TAC"')},
-                                      terpenes={x['libraryTerpene']['name']:
-                                                    float(x['value']) / 100.0 if x['value'] else 0
-                                                for x in item['terpenes']},
-                                      notes=item['description'])
+                                      cannabinoids={x.cannabinoid.name.split(' ')[0]: x.value / 100.0
+                                                    if x.value else 0
+                                                    for x in item.cannabinoidsV2
+                                                    if not x.cannabinoid.name.startswith('"TAC"')},
+                                      terpenes={x.libraryTerpene.name: x.value / 100.0 if x.value else 0
+                                                for x in item.terpenes},
+                                      notes=item.description)
 
-                    if not product.weight and item['manualInventory']:
-                        product.weight = self.weight(item['manualInventory'][0]['option'])
+                    if not product.weight and item.manualInventory:
+                        product.weight = self.weight(item.manualInventory[0].option)
 
-                    if item['recSpecialPrices']:
-                        product.sale_price = item['recSpecialPrices'][0]
-                    if item['medicalSpecialPrices']:
-                        product.sale_price = item['medicalSpecialPrices'][0]
+                    if item.recSpecialPrices:
+                        product.sale_price = item.recSpecialPrices[0]
+                    if item.medicalSpecialPrices:
+                        product.sale_price = item.medicalSpecialPrices[0]
 
-                    if item['specialData']:
-                        for x in item['specialData']:
-                            if not x.startswith('_') and item['specialData'][x]:
-                                for y in item['specialData'][x]:
-                                    product.sale_description = y['specialName']
+                    if item.specialData and item.specialData.saleSpecials:
+                        product.sale_description = " ".join([x.specialName
+                                                             for x in item.specialData.saleSpecials])
 
                     return product
                 except requests.exceptions.JSONDecodeError:
