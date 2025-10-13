@@ -138,7 +138,7 @@ class RiseDispensary(Dispensary):
 
                                 special_price = getattr(item, special_price_name)
                                 if special_price:
-                                    row.sale_price = float(special_price.discount_price)
+                                    row.sale_price = special_price.discount_price
                                     if special_price.discount_type == 'percent':
                                         row.sale_type = f"{special_price.discount_percent}% off"
                                     elif special_price.discount_type == 'target_price':

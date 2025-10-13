@@ -71,6 +71,21 @@ class EthosProductDetail(EthosProduct):
     cannabinoidsV2: list[EthosProductCannabinoid]
     description: str
 
+    @property
+    def weight(self) -> str:
+        this = (self.Options[0]
+                if self.Options else (self.manualInventory[0]
+                                      if self.manualInventory else ""))
+        if re.match(r'\.[1-4]g', this):
+            return 'sub_half'
+        if re.match(r'\.5g', this):
+            return 'half_gram'
+        if re.match(r'1g', this):
+            return 'gram'
+        if re.match(r'2g', this):
+            return 'two_gram'
+        return this
+
 
 class QueryResultInfo(BaseModel):
     totalCount: int
@@ -102,17 +117,6 @@ class EthosDispensary(Dispensary):
             if isinstance(self.query_items[x], dict) else self.query_items[x]
                               for x in self.query_items}, quote_via=quote)
 
-    @staticmethod
-    def weight(this: str) -> str:
-        if re.match(r'\.[1-4]g', this):
-            return 'sub_half'
-        if re.match(r'\.5g', this):
-            return 'half_gram'
-        if re.match(r'1g', this):
-            return 'gram'
-        if re.match(r'2g', this):
-            return 'two_gram'
-        return this
 
     def __init__(self, location_name: str, dispensary_id: str, api_hostname: str) -> None:
         """Construct Ethos Dispensary object."""
@@ -226,7 +230,7 @@ class EthosDispensary(Dispensary):
                                       strain=item.Name.split('|')[0].strip(),
                                       strain_type=item.strainType,
                                       product_name=item.Name,
-                                      weight=self.weight(item.Options[0]) if item.Options else "",
+                                      weight=item.weight,
                                       inventory=item.manualInventory[0].inventory,
                                       full_price=item.Prices[0] if item.Prices else 0.0,
                                       sale_price=None,
@@ -239,9 +243,6 @@ class EthosDispensary(Dispensary):
                                       terpenes={x.libraryTerpene.name: x.value / 100.0 if x.value else 0
                                                 for x in item.terpenes},
                                       notes=item.description)
-
-                    if not product.weight and item.manualInventory:
-                        product.weight = self.weight(item.manualInventory[0].option)
 
                     if item.recSpecialPrices:
                         product.sale_price = item.recSpecialPrices[0]

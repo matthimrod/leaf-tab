@@ -1,3 +1,5 @@
+"""LeafTab: The Cannalyzer."""
+
 import argparse
 import logging
 import sys
