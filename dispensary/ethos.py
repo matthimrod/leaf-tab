@@ -74,7 +74,7 @@ class EthosProductDetail(EthosProduct):
     @property
     def weight(self) -> str:
         this = (self.Options[0]
-                if self.Options else (self.manualInventory[0]
+                if self.Options else (self.manualInventory[0].option
                                       if self.manualInventory else ""))
         if re.match(r'\.[1-4]g', this):
             return 'sub_half'
