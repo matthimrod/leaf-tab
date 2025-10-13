@@ -23,7 +23,7 @@ parser.add_argument('-o', '--output',
                     default='leaf_tab.xlsx')
 args = parser.parse_args()
 
-dispensaries = [
+dispensaries: list[Dispensary] = [
 
     RiseDispensary('Monroeville',
                    2266),

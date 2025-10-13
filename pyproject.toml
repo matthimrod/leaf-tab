@@ -21,6 +21,9 @@ dev = [
     "types-requests>=2.32.0.20250328",
 ]
 
+[tool.mypy]
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 100
 indent-width = 4

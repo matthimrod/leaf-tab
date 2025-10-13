@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import logging
 import re
+from typing import Optional
 from urllib.parse import quote, urlencode
 
 import requests
@@ -171,7 +172,8 @@ class EthosDispensary(Dispensary):
                 response = session.get(url=products_url.url)
                 payload = Result.model_validate_json(response.text)
 
-                total_pages = payload.data.filteredProducts.queryInfo.totalPages
+                if payload.data.filteredProducts.queryInfo:
+                    total_pages = payload.data.filteredProducts.queryInfo.totalPages
                 products_url.query_items["variables"]["page"] += 1  # type: ignore[index, operator]
 
                 product_data.extend(payload.data.filteredProducts.products)
@@ -214,6 +216,8 @@ class EthosDispensary(Dispensary):
                     if not payload.data.filteredProducts.products:
                         return None
                     item = payload.data.filteredProducts.products[0]
+                    if not isinstance(item, EthosProductDetail):
+                        return None
 
                     product = Product(id=item.id,
                                       brand=item.brandName,
