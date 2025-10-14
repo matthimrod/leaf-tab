@@ -261,7 +261,7 @@ class EthosDispensary(Dispensary):
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 product_futures = [executor.submit(get_product_by_cname, cname)
-                                   for cname in [x['cName'] for x in product_data]]
+                                   for cname in [x.cName for x in product_data]]
                 inventory = [future.result()
                              for future in concurrent.futures.as_completed(product_futures)]
                 self.inventory = [item for item in inventory if item is not None]
