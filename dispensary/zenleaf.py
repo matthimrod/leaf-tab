@@ -81,7 +81,7 @@ class Result(BaseModel):
     page: int
     pageSize: int
     total: int
-    list: list
+    list: list[ZenLeafProductResult]
 
 
 class ZenleafDispensary(Dispensary):
@@ -135,8 +135,8 @@ class ZenleafDispensary(Dispensary):
 
                 product_data.extend(payload.list)
 
-            def get_product_by_id(variant_id: str) -> Product | None:
-                logger.info('Reading full information for %s', variant_id)
+            def get_product_by_id(variant_id: int) -> Product | None:
+                logger.info('Reading full information for %d', variant_id)
                 product_response = session.post(url='https://sweed.app/_api/proxy/Products/GetProductByVariantId',
                                                 json={"variantId": variant_id, "platformOs": "web"})
                 item = ZenLeafProductVariantDetail.model_validate_json(product_response.text)
@@ -173,8 +173,8 @@ class ZenleafDispensary(Dispensary):
                     return None
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 product_futures = [executor.submit(get_product_by_id, variant_id)
-                                   for variant_id in [item['id'] for sublist in
-                                                      [x['variants'] for x in product_data]
+                                   for variant_id in [item.id for sublist in
+                                                      [x.variants for x in product_data]
                                                       for item in sublist]]
                 inventory = [future.result()
                              for future in concurrent.futures.as_completed(product_futures)]

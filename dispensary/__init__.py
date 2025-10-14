@@ -41,8 +41,8 @@ class Dispensary:
     name: str
     inventory: list[Product]
     inventory_data: pd.DataFrame
-    _cannabinoids: set
-    _terpenes: set
+    _cannabinoids: set[str]
+    _terpenes: set[str]
 
     def __init__(self) -> None:
         """Construct Dispensary base class."""
@@ -100,7 +100,7 @@ class Dispensary:
         netloc: str = ''
         path: str = ''
         params: str = ''
-        query_items: dict[str, str | int | dict] = {}  # noqa: RUF012
+        query_items: dict[str, str | int | dict[str, str | int | object]] = {}
         fragment: str = ''
 
         @property
