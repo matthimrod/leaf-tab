@@ -29,7 +29,8 @@ class ZenLeafProductPrevalence(BaseModel):
 
 
 class ZenLeafProductPromo(BaseModel):
-    name: str
+    name: str | None = None
+    shortName: str | None = None
 
 
 class ZenLeafProductStrain(BaseModel):
@@ -145,32 +146,35 @@ class ZenleafDispensary(Dispensary):
                                             json={"variantId": variant_id, "platformOs": "web"})
                 lab_payload = ZenLeafLabData.model_validate_json(lab_response.text)
 
-                try:
-                    return Product(id=str(item.id),
-                                   brand=item.brand.name,
-                                   type=item.category.name,
-                                   subtype=item.subcategory.name,
-                                   strain=item.strain.name if item.strain else '',
-                                   strain_type=item.strain.prevalence.name if item.strain and item.strain.prevalence else '',
-                                   product_name=" - ".join([item.name, item.variants[0].name]),
-                                   weight=self.weight(item.variants[0].name),
-                                   inventory=item.variants[0].availableQty,
-                                   full_price=item.variants[0].price,
-                                   sale_price=item.variants[0].promoPrice,
-                                   sale_type=None,
-                                   sale_description=' & '.join([promo.name for promo in item.variants[0].promos]),
-                                   cannabinoids={x.name: x.min / 100.0
-                                                 for x in lab_payload.thc.values
-                                                 if not x.name.startswith('Total')} |
-                                                {x.name: x.min / 100.0
-                                                 for x in lab_payload.cbd.values
-                                                 if not x.name.startswith('Total')},
-                                   terpenes={x.name: x.min / 100.0
-                                             for x in lab_payload.terpenes.values
+                return Product(id=str(item.id),
+                               brand=item.brand.name,
+                               type=item.category.name,
+                               subtype=item.subcategory.name,
+                               strain=item.strain.name if item.strain else '',
+                               strain_type=item.strain.prevalence.name if item.strain and item.strain.prevalence else '',
+                               product_name=" - ".join([item.name, item.variants[0].name]),
+                               weight=self.weight(item.variants[0].name),
+                               inventory=item.variants[0].availableQty,
+                               full_price=item.variants[0].price,
+                               sale_price=item.variants[0].promoPrice,
+                               sale_type=None,
+                               sale_description=' & '.join([promo.name
+                                                            if promo.name else promo.shortName
+                                                            if promo.shortName else ""
+                                                            for promo in item.variants[0].promos
+                                                            if promo.name is not None or
+                                                                 promo.shortName is not None]),
+                               cannabinoids={x.name: x.min / 100.0
+                                             for x in lab_payload.thc.values
+                                             if not x.name.startswith('Total')} |
+                                            {x.name: x.min / 100.0
+                                             for x in lab_payload.cbd.values
                                              if not x.name.startswith('Total')},
-                                   notes=item.description or '')
-                except TypeError:
-                    return None
+                               terpenes={x.name: x.min / 100.0
+                                         for x in lab_payload.terpenes.values
+                                         if not x.name.startswith('Total')},
+                               notes=item.description or '')
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 product_futures = [executor.submit(get_product_by_id, variant_id)
                                    for variant_id in [item.id for sublist in

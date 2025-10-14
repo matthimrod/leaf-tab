@@ -214,50 +214,45 @@ class EthosDispensary(Dispensary):
                             },
                         },
                 )
-                try:
-                    response = session.get(url=product_url.url)
-                    payload = Result.model_validate_json(response.text)
-                    if not payload.data.filteredProducts.products:
-                        return None
-                    item = payload.data.filteredProducts.products[0]
-                    if not isinstance(item, EthosProductDetail):
-                        return None
-
-                    product = Product(id=item.id,
-                                      brand=item.brandName,
-                                      type=item.type,
-                                      subtype=item.Name.split('|')[1].strip(),
-                                      strain=item.Name.split('|')[0].strip(),
-                                      strain_type=item.strainType,
-                                      product_name=item.Name,
-                                      weight=item.weight,
-                                      inventory=item.manualInventory[0].inventory,
-                                      full_price=item.Prices[0] if item.Prices else 0.0,
-                                      sale_price=None,
-                                      sale_type=None,
-                                      sale_description=None,
-                                      cannabinoids={x.cannabinoid.name.split(' ')[0]: x.value / 100.0
-                                                    if x.value else 0
-                                                    for x in item.cannabinoidsV2
-                                                    if not x.cannabinoid.name.startswith('"TAC"')},
-                                      terpenes={x.libraryTerpene.name: x.value / 100.0 if x.value else 0
-                                                for x in item.terpenes},
-                                      notes=item.description)
-
-                    if item.recSpecialPrices:
-                        product.sale_price = item.recSpecialPrices[0]
-                    if item.medicalSpecialPrices:
-                        product.sale_price = item.medicalSpecialPrices[0]
-
-                    if item.specialData and item.specialData.saleSpecials:
-                        product.sale_description = " ".join([x.specialName
-                                                             for x in item.specialData.saleSpecials])
-
-                    return product
-                except requests.exceptions.JSONDecodeError:
+                response = session.get(url=product_url.url)
+                payload = Result.model_validate_json(response.text)
+                if not payload.data.filteredProducts.products:
                     return None
-                except TypeError:
+                item = payload.data.filteredProducts.products[0]
+                if not isinstance(item, EthosProductDetail):
                     return None
+
+                product = Product(id=item.id,
+                                  brand=item.brandName,
+                                  type=item.type,
+                                  subtype=item.Name.split('|')[1].strip(),
+                                  strain=item.Name.split('|')[0].strip(),
+                                  strain_type=item.strainType,
+                                  product_name=item.Name,
+                                  weight=item.weight,
+                                  inventory=item.manualInventory[0].inventory,
+                                  full_price=item.Prices[0] if item.Prices else 0.0,
+                                  sale_price=None,
+                                  sale_type=None,
+                                  sale_description=None,
+                                  cannabinoids={x.cannabinoid.name.split(' ')[0]: x.value / 100.0
+                                                if x.value else 0
+                                                for x in item.cannabinoidsV2
+                                                if not x.cannabinoid.name.startswith('"TAC"')},
+                                  terpenes={x.libraryTerpene.name: x.value / 100.0 if x.value else 0
+                                            for x in item.terpenes},
+                                  notes=item.description)
+
+                if item.recSpecialPrices:
+                    product.sale_price = item.recSpecialPrices[0]
+                if item.medicalSpecialPrices:
+                    product.sale_price = item.medicalSpecialPrices[0]
+
+                if item.specialData and item.specialData.saleSpecials:
+                    product.sale_description = " ".join([x.specialName
+                                                         for x in item.specialData.saleSpecials])
+
+                return product
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 product_futures = [executor.submit(get_product_by_cname, cname)
