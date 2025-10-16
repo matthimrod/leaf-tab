@@ -30,22 +30,22 @@ class VariantLabResults(BaseModel):
 class VariantSpecialPrice(BaseModel):
     price: str
     discount_type: str
-    discount_price: str
-    discount_amount: float
-    discount_percent: str
+    discount_price: str | None
+    discount_amount: float | None
+    discount_percent: str | None
 
 
 class VariantDetails(VariantBase):
-    store_notes: str
+    store_notes: str | None
     strain: str | None
-    aggregate_rating: float
+    aggregate_rating: float | None
     available_weights: list[str]
     brand: str
     bucket_price: float
     kind_subtype: str
     kind: str
-    custom_product_type: str
-    root_subtype: str
+    custom_product_type: str | None
+    root_subtype: str | None
     special_title: str | None
     lab_results: list[VariantLabResults]
     name: str
