@@ -52,24 +52,21 @@ class EthosProductCannabinoid(EthosProductLabData):
 class EthosProduct(BaseModel):
     id: str
     cName: str
-
-
-class EthosProductDetail(EthosProduct):
-    brandName: str
-    Name: str
-    Options: list[str]
-    manualInventory: list[EthosProductInventory]
-    medicalSpecialPrices: list[float]
-    Prices: list[float]
-    recSpecialPrices: list[float]
-    specialData: EthosProductSpecialData
-    Status: str
-    strainType: str
-    subcategory: str
-    type: str
-    terpenes: list[EthosProductTerpene]
-    cannabinoidsV2: list[EthosProductCannabinoid]
-    description: str
+    brandName: str | None = None
+    Name: str | None = None
+    Options: list[str] | None = None
+    manualInventory: list[EthosProductInventory] | None = None
+    medicalSpecialPrices: list[float] | None = None
+    Prices: list[float] | None = None
+    recSpecialPrices: list[float] | None = None
+    specialData: EthosProductSpecialData | None = None
+    Status: str | None = None
+    strainType: str | None = None
+    subcategory: str | None = None
+    type: str | None = None
+    terpenes: list[EthosProductTerpene] | None = None
+    cannabinoidsV2: list[EthosProductCannabinoid] | None = None
+    description: str | None = None
 
     @property
     def weight(self) -> str:
@@ -93,7 +90,7 @@ class QueryResultInfo(BaseModel):
 
 
 class ProductResultData(BaseModel):
-    products: list[EthosProduct | EthosProductDetail]
+    products: list[EthosProduct]
     queryInfo: QueryResultInfo | None = None
 
 
@@ -136,6 +133,7 @@ class EthosDispensary(Dispensary):
             products_url = self.URLBuilder(
                     netloc=api_hostname,
                     path='/api-4/graphql',
+                    params='',
                     query_items={
                         'operationName': 'FilteredProducts',
                         'variables': {
@@ -214,79 +212,33 @@ class EthosDispensary(Dispensary):
                             },
                         },
                 )
-                try:
-                    response = session.get(url=product_url.url)
-                    payload = response.json()
-                    if not payload['data']['filteredProducts']['products']:
-                        return None
-                    item = payload['data']['filteredProducts']['products'][0]
-
-                    product = Product(id=item['id'],
-                                      brand=item['brandName'],
-                                      type=item['type'],
-                                      subtype=item['Name'].split('|')[1].strip()
-                                      if '|' in item['Name'] else item['Name'],
-                                      strain=item['Name'].split('|')[0].strip()
-                                      if '|' in item['Name'] else item['Name'],
-                                      strain_type=item['strainType'],
-                                      product_name=item['Name'],
-                                      weight=self.weight(item['Options'][0]) if item['Options'] else '',
-                                      inventory=item['manualInventory'][0]['inventory'],
-                                      full_price=item['Prices'][0] if item['Prices'] else 0.0,
-                                      sale_price=None,
-                                      sale_type=None,
-                                      sale_description=None,
-                                      cannabinoids={
-                                          x['cannabinoid']['name'].split(' ')[0]:
-                                              float(x['value']) / 100.0 if x['value'] else 0
-                                          for x in item['cannabinoidsV2']
-                                          if not x['cannabinoid']['name'].startswith('"TAC"')},
-                                      terpenes={x['libraryTerpene']['name']:
-                                                    float(x['value']) / 100.0 if x['value'] else 0
-                                                for x in item['terpenes']},
-                                      notes=item['description'])
-
-                    if not product.weight and item['manualInventory']:
-                        product.weight = self.weight(item['manualInventory'][0]['option'])
-
-                    if item['recSpecialPrices']:
-                        product.sale_price = item['recSpecialPrices'][0]
-                    if item['medicalSpecialPrices']:
-                        product.sale_price = item['medicalSpecialPrices'][0]
-
-                    if item['specialData']:
-                        for x in item['specialData']:
-                            if not x.startswith('_') and item['specialData'][x]:
-                                for y in item['specialData'][x]:
-                                    product.sale_description = y['specialName']
-
-                    return product
-                except requests.exceptions.JSONDecodeError:
+                response = session.get(url=product_url.url)
+                payload = Result.model_validate_json(response.text)
+                if not payload.data.filteredProducts.products:
                     return None
                 item = payload.data.filteredProducts.products[0]
-                if not isinstance(item, EthosProductDetail):
-                    return None
 
                 product = Product(id=item.id,
-                                  brand=item.brandName,
-                                  type=item.type,
-                                  subtype=item.Name.split('|')[1].strip(),
-                                  strain=item.Name.split('|')[0].strip(),
-                                  strain_type=item.strainType,
-                                  product_name=item.Name,
+                                  brand=item.brandName or '',
+                                  type=item.type or '',
+                                  subtype=item.Name.split('|')[1].strip() if item.Name else '',
+                                  strain=item.Name.split('|')[0].strip() if item.Name else '',
+                                  strain_type=item.strainType or '',
+                                  product_name=item.Name or '',
                                   weight=item.weight,
-                                  inventory=item.manualInventory[0].inventory,
+                                  inventory=(item.manualInventory[0].inventory
+                                             if item.manualInventory else 0),
                                   full_price=item.Prices[0] if item.Prices else 0.0,
                                   sale_price=None,
                                   sale_type=None,
                                   sale_description=None,
                                   cannabinoids={x.cannabinoid.name.split(' ')[0]: x.value / 100.0
                                                 if x.value else 0
-                                                for x in item.cannabinoidsV2
+                                                for x in (item.cannabinoidsV2 or [])
                                                 if not x.cannabinoid.name.startswith('"TAC"')},
                                   terpenes={x.libraryTerpene.name: x.value / 100.0 if x.value else 0
-                                            for x in item.terpenes},
-                                  notes=item.description)
+                                            for x in (item.terpenes or [])},
+                                  notes=item.description or '')
 
                 if item.recSpecialPrices:
                     product.sale_price = item.recSpecialPrices[0]

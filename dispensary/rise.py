@@ -30,22 +30,22 @@ class VariantLabResults(BaseModel):
 class VariantSpecialPrice(BaseModel):
     price: str
     discount_type: str
-    discount_price: str
-    discount_amount: float
-    discount_percent: str
+    discount_price: str | None
+    discount_amount: float | None
+    discount_percent: str | None
 
 
 class VariantDetails(VariantBase):
-    store_notes: str
+    store_notes: str | None
     strain: str | None
-    aggregate_rating: float
+    aggregate_rating: float | None
     available_weights: list[str]
     brand: str
     bucket_price: float
     kind_subtype: str
     kind: str
-    custom_product_type: str
-    root_subtype: str
+    custom_product_type: str | None
+    root_subtype: str | None
     special_title: str | None
     lab_results: list[VariantLabResults]
     name: str
@@ -134,7 +134,7 @@ class RiseDispensary(Dispensary):
                                                         for x in item.lab_results if x.price_id == weight_name
                                                         for y in x.lab_results
                                                         if not self.is_cannabinoid(y.compound_name)},
-                                              notes=item.store_notes)
+                                              notes=item.store_notes or '')
 
                                 special_price = getattr(item, special_price_name)
                                 if special_price:
