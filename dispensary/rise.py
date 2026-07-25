@@ -100,7 +100,7 @@ class RiseDispensary(Dispensary):
             type=item.kind,
             subtype=item.brand_subtype,
             strain=item.name,
-            strain_type=item.category if item.category else '',
+            strain_type=item.category or '',
             product_name=f'{item.name} - {item.brand_subtype}',
             weight=amount,
             inventory=None,

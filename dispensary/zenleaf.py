@@ -127,8 +127,9 @@ class ZenleafDispensary(Dispensary):
             while request_body['page'] <= total_pages:  # type: ignore[operator]
                 logger.info('Reading inventory page %d', request_body['page'])
 
-                response = session.post(url='https://sweed.app/_api/proxy/Products/GetProductList',
-                                        json=request_body)
+                response = session.post(
+                    url='https://sweed.app/_api/proxy/Products/GetProductList', json=request_body,
+                )
                 payload = Result.model_validate_json(response.text)
 
                 total_pages = math.ceil(payload.total / payload.pageSize)
@@ -138,50 +139,70 @@ class ZenleafDispensary(Dispensary):
 
             def get_product_by_id(variant_id: int) -> Product | None:
                 logger.info('Reading full information for %d', variant_id)
-                product_response = session.post(url='https://sweed.app/_api/proxy/Products/GetProductByVariantId',
-                                                json={"variantId": variant_id, "platformOs": "web"})
+                product_response = session.post(
+                    url='https://sweed.app/_api/proxy/Products/GetProductByVariantId',
+                    json={'variantId': variant_id, 'platformOs': 'web'},
+                )
                 item = ZenLeafProductVariantDetail.model_validate_json(product_response.text)
 
-                lab_response = session.post(url='https://sweed.app/_api/proxy/Products/GetExtendedLabdata',
-                                            json={"variantId": variant_id, "platformOs": "web"})
+                lab_response = session.post(
+                    url='https://sweed.app/_api/proxy/Products/GetExtendedLabdata',
+                    json={'variantId': variant_id, 'platformOs': 'web'},
+                )
                 lab_payload = ZenLeafLabData.model_validate_json(lab_response.text)
 
-                return Product(id=str(item.id),
-                               brand=item.brand.name,
-                               type=item.category.name,
-                               subtype=item.subcategory.name,
-                               strain=item.strain.name if item.strain else '',
-                               strain_type=item.strain.prevalence.name if item.strain and item.strain.prevalence else '',
-                               product_name=" - ".join([item.name, item.variants[0].name]),
-                               weight=self.weight(item.variants[0].name),
-                               inventory=item.variants[0].availableQty,
-                               full_price=item.variants[0].price,
-                               sale_price=item.variants[0].promoPrice,
-                               sale_type=None,
-                               sale_description=' & '.join([promo.name
-                                                            if promo.name else promo.shortName
-                                                            if promo.shortName else ""
-                                                            for promo in item.variants[0].promos
-                                                            if promo.name is not None or
-                                                                 promo.shortName is not None]),
-                               cannabinoids={x.name: x.min / 100.0
-                                             for x in lab_payload.thc.values
-                                             if not x.name.startswith('Total')} |
-                                            {x.name: x.min / 100.0
-                                             for x in lab_payload.cbd.values
-                                             if not x.name.startswith('Total')},
-                               terpenes={x.name: x.min / 100.0
-                                         for x in lab_payload.terpenes.values
-                                         if not x.name.startswith('Total')},
-                               notes=item.description or '')
+                return Product(
+                    id=str(item.id),
+                    brand=item.brand.name,
+                    type=item.category.name,
+                    subtype=item.subcategory.name,
+                    strain=item.strain.name if item.strain else '',
+                    strain_type=item.strain.prevalence.name
+                    if item.strain and item.strain.prevalence
+                    else '',
+                    product_name=f'{item.name} - {item.variants[0].name}',
+                    weight=self.weight(item.variants[0].name),
+                    inventory=item.variants[0].availableQty,
+                    full_price=item.variants[0].price,
+                    sale_price=item.variants[0].promoPrice,
+                    sale_type=None,
+                    sale_description=' & '.join(
+                        [
+                            promo.name or (promo.shortName or '')
+                            for promo in item.variants[0].promos
+                            if promo.name is not None or promo.shortName is not None
+                        ],
+                    ),
+                    cannabinoids={
+                        x.name: x.min / 100.0
+                        for x in lab_payload.thc.values
+                        if not x.name.startswith('Total')
+                    }
+                    | {
+                        x.name: x.min / 100.0
+                        for x in lab_payload.cbd.values
+                        if not x.name.startswith('Total')
+                    },
+                    terpenes={
+                        x.name: x.min / 100.0
+                        for x in lab_payload.terpenes.values
+                        if not x.name.startswith('Total')
+                    },
+                    notes=item.description or '',
+                )
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-                product_futures = [executor.submit(get_product_by_id, variant_id)
-                                   for variant_id in [item.id for sublist in
-                                                      [x.variants for x in product_data]
-                                                      for item in sublist]]
-                inventory = [future.result()
-                             for future in concurrent.futures.as_completed(product_futures)]
+                product_futures = [
+                    executor.submit(get_product_by_id, variant_id)
+                    for variant_id in [
+                        item.id
+                        for sublist in [x.variants for x in product_data]
+                        for item in sublist
+                    ]
+                ]
+                inventory = [
+                    future.result() for future in concurrent.futures.as_completed(product_futures)
+                ]
                 self.inventory = [item for item in inventory if item is not None]
 
         self.process_dataframe()

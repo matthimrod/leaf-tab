@@ -3,7 +3,6 @@ import concurrent.futures
 import json
 import logging
 import re
-from typing import Optional
 from urllib.parse import quote, urlencode
 
 import requests
@@ -72,7 +71,7 @@ class EthosProduct(BaseModel):
     def weight(self) -> str:
         this = (self.Options[0]
                 if self.Options else (self.manualInventory[0].option
-                                      if self.manualInventory else ""))
+                                      if self.manualInventory else ''))
         if re.match(r'\.[1-4]g', this):
             return 'sub_half'
         if re.match(r'\.5g', this):
@@ -176,7 +175,7 @@ class EthosDispensary(Dispensary):
 
                 if payload.data.filteredProducts.queryInfo:
                     total_pages = payload.data.filteredProducts.queryInfo.totalPages
-                products_url.query_items["variables"]["page"] += 1  # type: ignore[index, operator]
+                products_url.query_items['variables']['page'] += 1  # type: ignore[index, operator]
 
                 product_data.extend(payload.data.filteredProducts.products)
 
@@ -246,7 +245,7 @@ class EthosDispensary(Dispensary):
                     product.sale_price = item.medicalSpecialPrices[0]
 
                 if item.specialData and item.specialData.saleSpecials:
-                    product.sale_description = " ".join([x.specialName
+                    product.sale_description = ' '.join([x.specialName
                                                          for x in item.specialData.saleSpecials])
 
                 return product
