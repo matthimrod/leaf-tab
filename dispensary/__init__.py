@@ -1,8 +1,7 @@
 import logging
 import re
 import warnings
-from dataclasses import dataclass
-from typing import NamedTuple
+from dataclasses import dataclass, field
 from urllib.parse import urlencode, urlunparse
 
 import pandas as pd
@@ -95,12 +94,15 @@ class Dispensary:
             record.dropna(axis=1, how='all')
             self.inventory_data = pd.concat([self.inventory_data, record])
 
-    class URLBuilder(NamedTuple):
+    @dataclass(frozen=True)
+    class URLBuilder:
         scheme: str = 'https'
         netloc: str = ''
         path: str = ''
         params: str = ''
-        query_items: dict[str, str | int | dict[str, str | int | object]] = {}
+        query_items: dict[str, str | int | dict[str, str | int | object]] = field(
+            default_factory=dict,
+        )
         fragment: str = ''
 
         @property
@@ -111,12 +113,16 @@ class Dispensary:
         @property
         def url(self) -> str:
             """The full URL."""
-            return urlunparse((self.scheme,
-                               self.netloc,
-                               self.path,
-                               self.params,
-                               self.query,
-                               self.fragment))
+            return urlunparse(
+                (
+                    self.scheme,
+                    self.netloc,
+                    self.path,
+                    self.params,
+                    self.query,
+                    self.fragment,
+                ),
+            )
 
     @staticmethod
     def is_cannabinoid(name: str) -> bool:
