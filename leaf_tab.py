@@ -26,8 +26,8 @@ args = parser.parse_args()
 
 dispensaries: list[Dispensary] = [
     RiseDispensary('Monroeville', 2266),
-    EthosDispensary('Harmarville', '621900cebbc5580e15476deb', 'harmarville.ethoscannabis.com'),
-    ZenleafDispensary('Monroeville', '146'),
+    # EthosDispensary('Harmarville', '621900cebbc5580e15476deb', 'harmarville.ethoscannabis.com'),
+    # ZenleafDispensary('Monroeville', '146'),
 ]
 
 Dispensary.write_spreadsheet(dispensaries, args.output)

@@ -209,11 +209,15 @@ class Dispensary:
                     if col not in dispensary.terpenes and \
                             col not in dispensary.cannabinoids and \
                             col != 'notes':
-                        max_len = max(
+                        try:
+                            max_len = max(
                                 dispensary.inventory_data[col].astype(str).map(len).max(),
                                 # Length of the longest cell in the column
                                 len(col),  # Length of the column name
-                        ) + 3  # Adding some padding
+                            ) + 3  # Adding some padding
+                        except (TypeError, ValueError):
+                            # Handle columns with None/NaN values
+                            max_len = len(col) + 3
                         worksheet.set_column(f'{column_map[col]}:{column_map[col]}', max_len)
 
                 for col in [x for x in dispensary.inventory_data.columns if 'price' in x]:
