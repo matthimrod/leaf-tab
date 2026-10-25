@@ -38,6 +38,11 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+[tool.ruff.lint.per-file-ignores]
+"dispensary/*.py" = ["N815"]
+"tests/*.py" = ["S101", "PLR2004"]
+
+
 [tool.ruff.format]
 quote-style = "single"
 indent-style = "space"
