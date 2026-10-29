@@ -1,8 +1,7 @@
 import logging
 import re
 import warnings
-from dataclasses import dataclass
-from typing import NamedTuple
+from dataclasses import dataclass, field
 from urllib.parse import urlencode, urlunparse
 
 import pandas as pd
@@ -95,12 +94,15 @@ class Dispensary:
             record.dropna(axis=1, how='all')
             self.inventory_data = pd.concat([self.inventory_data, record])
 
-    class URLBuilder(NamedTuple):
+    @dataclass(frozen=True)
+    class URLBuilder:
         scheme: str = 'https'
         netloc: str = ''
         path: str = ''
         params: str = ''
-        query_items: dict[str, str | int | dict[str, str | int | object]] = {}
+        query_items: dict[str, str | int | dict[str, str | int | object]] = field(
+            default_factory=dict,
+        )
         fragment: str = ''
 
         @property
@@ -111,12 +113,16 @@ class Dispensary:
         @property
         def url(self) -> str:
             """The full URL."""
-            return urlunparse((self.scheme,
-                               self.netloc,
-                               self.path,
-                               self.params,
-                               self.query,
-                               self.fragment))
+            return urlunparse(
+                (
+                    self.scheme,
+                    self.netloc,
+                    self.path,
+                    self.params,
+                    self.query,
+                    self.fragment,
+                ),
+            )
 
     @staticmethod
     def is_cannabinoid(name: str) -> bool:
@@ -203,15 +209,12 @@ class Dispensary:
                     if col not in dispensary.terpenes and \
                             col not in dispensary.cannabinoids and \
                             col != 'notes':
-                        try:
-                            max_len = max(
-                                    dispensary.inventory_data[col].astype(str).map(len).max(),
-                                    # Length of the longest cell in the column
-                                    len(col),  # Length of the column name
-                            ) + 3  # Adding some padding
-                            worksheet.set_column(f'{column_map[col]}:{column_map[col]}', max_len)
-                        except TypeError:
-                            pass
+                        max_len = max(
+                            dispensary.inventory_data[col].astype(str).fillna('').map(len).max(),
+                                # Length of the longest cell in the column
+                                len(col),  # Length of the column name
+                        ) + 3  # Adding some padding
+                        worksheet.set_column(f'{column_map[col]}:{column_map[col]}', max_len)
 
                 for col in [x for x in dispensary.inventory_data.columns if 'price' in x]:
                     worksheet.set_column(f'{column_map[col]}:{column_map[col]}',
