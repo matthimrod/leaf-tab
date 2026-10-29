@@ -2,10 +2,13 @@ import logging
 import re
 import warnings
 from dataclasses import dataclass
+from os import PathLike
 from typing import NamedTuple
 from urllib.parse import urlencode, urlunparse
 
 import pandas as pd
+from pandas import ExcelWriter
+from pandas._typing import WriteExcelBuffer
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -135,7 +138,10 @@ class Dispensary:
         return result
 
     @staticmethod
-    def write_spreadsheet(dispensaries: list['Dispensary'], file_name: str) -> None:
+    def write_spreadsheet(
+            dispensaries: list['Dispensary'],
+            file_name: str | PathLike[str] | WriteExcelBuffer | ExcelWriter
+    ) -> None:
         """Write the spreadsheet and all of its tabs to disk.
 
         :param dispensaries: List of dispensary objects to write.
